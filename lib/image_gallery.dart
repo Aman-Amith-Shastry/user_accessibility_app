@@ -1,12 +1,12 @@
-import 'dart:io';
+// ignore_for_file: import_of_legacy_library_into_null_safe
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:share/share.dart';
 
-class imageGallery extends StatefulWidget {
+class ImageGallery extends StatefulWidget {
 
   final List img_list;
   int pos;
@@ -14,24 +14,24 @@ class imageGallery extends StatefulWidget {
   bool visible = false;
   bool canDel = false;
 
-  imageGallery({
+  ImageGallery({Key? key, 
     required this.img_list,
     required this.pos,
     required this.entities
-  });
+  }) : super(key: key);
 
   @override
-  State<imageGallery> createState() => _imageGalleryState();
+  State<ImageGallery> createState() => _imageGalleryState();
 }
 
-class _imageGalleryState extends State<imageGallery> {
+class _imageGalleryState extends State<ImageGallery> {
 
   @override
 
   Widget build(BuildContext context) {
 
     int startPage = widget.pos;
-    PageController _pageController = PageController(initialPage: startPage);
+    PageController pageController = PageController(initialPage: startPage);
 
     return Scaffold(
       
@@ -40,7 +40,7 @@ class _imageGalleryState extends State<imageGallery> {
           backgroundColor: Colors.white,
           leading: IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(
+            icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.grey,
               )
@@ -57,7 +57,7 @@ class _imageGalleryState extends State<imageGallery> {
 
         child: PhotoViewGallery.builder(
           itemCount: widget.img_list.length,
-          pageController: _pageController,
+          pageController: pageController,
           
           builder: (context, index){
             final img = widget.img_list[index];
@@ -77,11 +77,14 @@ class _imageGalleryState extends State<imageGallery> {
 
         height: widget.visible? kBottomNavigationBarHeight: 0,
 
-        duration: Duration(milliseconds: 100),
+        duration: const Duration(milliseconds: 50),
 
         child: BottomNavigationBar(
 
           onTap: (index) async{
+            if(index == 0){
+              Share.shareFiles([widget.img_list[widget.pos].toString().substring(7).split("'")[0]]);
+            }
             if(index == 1){
               print("Index: ${widget.pos}");
               print("File: ${widget.img_list[widget.pos]}");
@@ -95,15 +98,12 @@ class _imageGalleryState extends State<imageGallery> {
               setState(() {
                 widget.img_list.remove(widget.img_list[widget.pos]);
               });
-              // setState(() {
-              //   widget.pos -= 1;
-              // });
             }
           },
           selectedItemColor: Colors.grey,
           unselectedItemColor: Colors.grey,
 
-          items: [
+          items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.share),
               label: "Share"
@@ -117,26 +117,6 @@ class _imageGalleryState extends State<imageGallery> {
             ]
           ),
       ),
-      // bottomNavigationBar: Container(
-      //   height: 0.1 * MediaQuery.of(context).size.height,
-      //   child: Row(children: [
-
-      //     Expanded(
-      //       child: IconButton(
-      //         onPressed: (){},
-      //         icon: Icon(Icons.share),
-      //       ),
-      //     ),
-
-      //     Expanded(
-      //       child: IconButton(
-      //         onPressed: (){},
-      //         icon: Icon(Icons.delete),
-      //       ),
-      //     ),
-
-      //   ]),
-      // ),
     );
   }
 }

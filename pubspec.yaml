@@ -51,6 +51,10 @@ dependencies:
   file_picker: ^4.5.1
   whatsapp_unilink: ^2.0.1+1
   pdf_render: ^1.1.0
+  share: ^0.6.5+4
+  image_picker: ^0.8.4
+  http:
+  dio:
   # simple_permissions: ^0.1.9
   # image_picker: ^0.6.7+6
 
@@ -77,9 +81,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

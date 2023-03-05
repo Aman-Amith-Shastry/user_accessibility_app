@@ -1,9 +1,15 @@
+// ignore_for_file: import_of_legacy_library_into_null_safe
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:share/share.dart';
 import 'package:user_accessibility_app/image_gallery.dart';
+import 'package:path_provider_ex/path_provider_ex.dart';
+import 'package:device_apps/device_apps.dart';
 
 void main(){
   runApp(const MaterialApp(
@@ -23,106 +29,144 @@ class ImagePage extends StatefulWidget {
 class _ImagePageState extends State<ImagePage> {
 
   bool _isloading = true;
-  List img_list = [];
+  List createdDates = [];
+  List dayList = [];
   List<AssetEntity> entity_list = [];
+  List<FileSystemEntity> sortedImages = [];
+  List<String> sortedAsString = [];
+  Map<DateTime, FileSystemEntity> mapImages = {};
 
   Future<void> _getImages() async{
-    List dir_list = [];
-
+    List dirList = [];
+    var storageInfo = await PathProviderEx.getStorageInfo();
+    List extensions = ['jpg', 'png', 'jpeg', 'bmp'];
     var _ps = await Permission.storage.request();
     if (_ps.isGranted) {
       final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList();
 
       for(AssetPathEntity path in paths){
-
-        List<AssetEntity> entities = await path.getAssetListPaged(page: 0, size: 80);
+        List<AssetEntity> entities = await path.getAssetListRange(start: 0, end: 500);
             setState(() {
               entity_list = entities;
               _isloading = false;
             });
           
-        
         for(AssetEntity entity in entities){
           
           final AssetEntity? asset = await AssetEntity.fromId(entity.id);
-          if(dir_list.contains(asset!.relativePath!) == false){
-            dir_list.add(asset.relativePath!);
+          if(dirList.contains("${storageInfo[0].rootDir}/${asset!.relativePath!}") == false && (asset.relativePath!.endsWith('.jpg') || asset.relativePath!.endsWith('.png') || asset.relativePath!.endsWith('.jpeg')) == false && asset.relativePath!.startsWith('/storage') == false){
+            dirList.add("${storageInfo[0].rootDir}/${asset.relativePath!}");
+          }
+
+          else{
+            dirList.add(asset.relativePath);
           }
         }
-        
-        for(var dir in dir_list){
-          Directory act_dir = Directory(dir);
-          List files = act_dir.listSync();
-            return setState(() {
-              img_list = files;
-            });
+        for(var dir in dirList){
+          Directory actDir = Directory(dir);
+          List<FileSystemEntity> files = actDir.listSync();
+          for(FileSystemEntity file in files){
+            if(extensions.contains(file.absolute.path.split('.')[1]) == true){
+              setState(() {
+                mapImages[file.statSync().changed] = file;
+              });
+            }
+          }
         }
-  
+        Map<DateTime, FileSystemEntity> sortedMap = Map.fromEntries(
+          mapImages.entries.toList()
+          ..sort(((a, b) => a.key.compareTo(b.key)))
+        );
+
+
+        sortedImages = sortedMap.values.toList().reversed.toList();
+        for(FileSystemEntity image in sortedImages){
+          setState(() {
+            sortedAsString.add(image.absolute.path);
+          });
+        }
       }
     } else {
       PhotoManager.openSetting();
     }
   }
 
+
+  void initState(){
+    _getImages();
+    super.initState();
+  }
   
   @override
 
   Widget build(BuildContext context) {
-
-    _getImages();
-
+    List<String> imagePaths = [];
     return Scaffold(
       appBar: AppBar(
-        title: Text("Images"),
+        title: const Text("Images"),
         leading: IconButton(
           onPressed: (){
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back_ios_new)
+          icon: const Icon(Icons.arrow_back_ios_new)
           ),
         backgroundColor: Colors.purple,
+        actions: [
+          IconButton(
+            onPressed: (){
+              DeviceApps.openApp('com.sec.android.app.camera');
+            },
+            icon: const Icon(Icons.camera_alt_outlined)),
+          IconButton(
+            onPressed: () async{
+              final List<XFile>? images = await ImagePicker().pickMultiImage();
+              if(images == null) return;
+              for(XFile image in images){
+                setState(() {
+                  imagePaths.add(image.path);
+                });
+              }
+              Share.shareFiles(imagePaths);
+            },
+            icon: const Icon(Icons.share))
+        ],
       ),
 
-      body:_isloading? Center(
+      body: sortedImages.isEmpty? const Center(
         child: CircularProgressIndicator(),
       ):
       Padding(
-        padding: EdgeInsets.only(top: 10),
-        child: GridView.builder(
-
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 0.05 * MediaQuery.of(context).size.width,
-            mainAxisSpacing: 0.1 * MediaQuery.of(context).size.height
-          ),
-          itemCount: img_list.length,
-          itemBuilder: ((context, index) {
-            String split_str = img_list[index].toString().split(".")[0];
-            String name = split_str.split("/").last;
-
-            return ListTile(
-              title: Image.file(img_list[index],),
-              subtitle: Text(name),
-              
-              onTap: () => Navigator.push(
-                context, MaterialPageRoute(
-                    builder: (BuildContext context) =>  imageGallery(img_list: img_list, pos: index, entities: entity_list)
-                  ),),
-
-              onLongPress: () async{
-                var stor = await Permission.storage.request();
-                var loc = await Permission.accessMediaLocation.request();
-                if(stor.isGranted && loc.isGranted){
-                  img_list[index].delete();
-                  print("Deleted");
-                }
-              },
-            );
-          })
-          )
-      ),
+        padding: const EdgeInsets.only(top: 10),
+      child: RefreshIndicator(
+        onRefresh: _getImages,
+        child: showImages(sortedImages, context, entity_list)
+        ),
+    ),
 
     );
   }
+}
 
+Widget showImages(List<FileSystemEntity> files, BuildContext context, List<AssetEntity> entity_list){
+  return GridView.builder(
+    itemCount: files.length,
+    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+      maxCrossAxisExtent: MediaQuery.of(context).size.width),
+    itemBuilder: (context, index){
+      return InkWell(
+        child: Image.file(
+          File(files[index].absolute.path),
+          width: MediaQuery.of(context).size.width,
+          fit:BoxFit.fitWidth
+          ),
+          onTap: (){
+            Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: ((context) => ImageGallery(img_list: files, pos: index, entities: entity_list))
+                )
+              );
+          },
+      );
+    });
 }

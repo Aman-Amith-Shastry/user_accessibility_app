@@ -33,27 +33,30 @@ class _AppPageState extends State<AppPage> {
     });
   }
 
+  void initState(){
+    _getAllAppNames();
+    super.initState();
+  }
+
   @override
 
   Widget build(BuildContext context) {
 
-    _getAllAppNames();
-
     return Scaffold(
       appBar: AppBar(
-        title: Text("Applications"),
+        title: const Text("Applications"),
         leading: IconButton(
           onPressed: (){
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back_ios_new)
+          icon: const Icon(Icons.arrow_back_ios_new)
           ),
           
         backgroundColor: Colors.purple,
 
                 actions: [
           IconButton(
-            icon: Icon(Icons.search),
+            icon: const Icon(Icons.search),
             onPressed: (){
               showSearch(
                 context: context, 
@@ -63,11 +66,11 @@ class _AppPageState extends State<AppPage> {
         ],
       ),
 
-      body: _isloading? Center(
+      body: _isloading? const Center(
         child: CircularProgressIndicator(),
       ):
       GridView.builder(
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: 300,
         ),
         itemCount: apps.length,
@@ -88,7 +91,7 @@ class MySearchDelegate extends SearchDelegate{
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [IconButton(
-      icon: Icon(Icons.clear),
+      icon: const Icon(Icons.clear),
       onPressed: (){
         if(query.isEmpty){
           close(context, null);
@@ -104,7 +107,7 @@ class MySearchDelegate extends SearchDelegate{
       onPressed: (){
         close(context, null);
       }, 
-      icon: Icon(Icons.arrow_back_ios));
+      icon: const Icon(Icons.arrow_back_ios));
   }
 
   @override
@@ -124,7 +127,7 @@ class MySearchDelegate extends SearchDelegate{
     }).toList() ;
 
     return  GridView.builder(
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 300,
           ),
           itemCount: suggestions.length,
@@ -147,7 +150,7 @@ Widget showApps(apps, index, context){
           width: 0.1 * MediaQuery.of(context).size.height,
           fit: BoxFit.fill,
         ),
-        SizedBox(height: 20,),
+        const SizedBox(height: 20,),
         Text(apps[index].appName, overflow: TextOverflow.clip,)
       ],
     ),

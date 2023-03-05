@@ -10,36 +10,6 @@ void main(){
   ));
 }
 
-_makingPhoneCall(String number) async {
-  var url = Uri.parse(number);
-  if (await canLaunchUrl(url)) {
-    await launchUrl(url);
-  } else {
-    throw 'Could not launch $url';
-  }
-}
-
-_launchWhatsapp(String number) async{
-
-  String fin_number = '';
-
-  if(number.startsWith("+") == false){
-    if(number.startsWith("+91") == false){
-      fin_number = "+91 $number";
-    }
-  }
-
-  else{
-    fin_number = "+91 ${number.split('+91').last}";
-  }
-
-  final link = WhatsAppUnilink(
-    phoneNumber: fin_number,
-  );
-  if(await canLaunch('$link')){
-    await launch('$link');
-  }
-}
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({Key? key}) : super(key: key);
@@ -49,6 +19,8 @@ class ContactsPage extends StatefulWidget {
 }
 
 class _ContactsPageState extends State<ContactsPage> {
+
+  bool disable = false;
   List<Contact> contactsList = [];
   bool _isloading = true;
 
@@ -56,38 +28,42 @@ class _ContactsPageState extends State<ContactsPage> {
     if (await FlutterContacts.requestPermission()) {
       List<Contact> contacts = await FlutterContacts.getContacts(
           withProperties: true, withPhoto: true);
+
       setState(() {
         contactsList = contacts;
         _isloading = false;
       });
+
     }
 
   }
-  
+
+  @override
+  void initState(){
+    getContact();
+    super.initState();
+  }
 
   @override
 
-
   Widget build(BuildContext context) {
-
-    getContact();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Contacts"),
+        title: const Text("Contacts"),
 
         leading: IconButton(
           onPressed: (){
             Navigator.pop(context);
           },
-          icon: Icon(Icons.arrow_back_ios_new)
+          icon: const Icon(Icons.arrow_back_ios_new)
           ),
 
         backgroundColor: Colors.purple,
 
         actions: [
           IconButton(
-            icon: Icon(Icons.search),
+            icon: const Icon(Icons.search),
             onPressed: (){
               showSearch(
                 context: context, 
@@ -97,13 +73,13 @@ class _ContactsPageState extends State<ContactsPage> {
         ],
       ),
 
-      body: _isloading? Center(
+      body: _isloading? const Center(
         child: CircularProgressIndicator(),
       ):
         ListView.builder(
           itemCount: contactsList.length,
           itemBuilder: (context, index){
-            return searchContacts(index, contactsList);
+            return searchContacts(index, contactsList, context);
           }
           )
 
@@ -119,7 +95,7 @@ class MySearchDelegate extends SearchDelegate{
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [IconButton(
-      icon: Icon(Icons.clear),
+      icon: const Icon(Icons.clear),
       onPressed: (){
         if(query.isEmpty){
           close(context, null);
@@ -135,7 +111,7 @@ class MySearchDelegate extends SearchDelegate{
       onPressed: (){
         close(context, null);
       }, 
-      icon: Icon(Icons.arrow_back_ios));
+      icon: const Icon(Icons.arrow_back_ios));
   }
 
   @override
@@ -157,49 +133,92 @@ class MySearchDelegate extends SearchDelegate{
     return ListView.builder(
       itemCount: suggestions.length,
       itemBuilder: ((context, index) {
-        return searchContacts(index, suggestions);
+        return searchContacts(index, suggestions, context);
       })
       );
   }
 }
 
-  Widget searchContacts(index, List<Contact> contactsList){
-    return Column(
-      children: [
-        ExpansionTile(
-          leading: (contactsList[index].photo == null)
-                    ? const CircleAvatar(child: Icon(Icons.person))
-                    : CircleAvatar(backgroundImage: MemoryImage(contactsList[index].photo!)),
+Widget searchContacts(index, List<Contact> contactsList, context){
 
-          title: Text(contactsList[index].name.first),
-          
-          subtitle: (contactsList[index].phones.isEmpty)
-          ? Text("")
-          : Text(contactsList[index].phones.first.number),
+  bool disable = false;
 
-          children: [
-            Row(children: [
-              Expanded(
-                child: IconButton(
-                  onPressed: (){
-                    _launchWhatsapp(contactsList[index].phones.first.number);
-                  },
-                  icon: Icon(Icons.whatsapp_outlined, color: Colors.green,)),
-              ),
-              
-              Expanded(
-                child: IconButton(
-                  onPressed: (){
-                    _makingPhoneCall("tel:"+contactsList[index].phones.first.number);
-                  },
-                  icon: Icon(Icons.call))
-                )
-              
-            ],)
-          ],
+  final snackBar = SnackBar(
+    content: const Text('Cannot open this number on WhatsApp as there is no country code'),
+    action: SnackBarAction(
+      label: 'CLOSE',
+      onPressed: (){}),
+  );
 
-        ),
-
-        Divider(height: 10,)
-      ]);
+  _makingPhoneCall(String number) async {
+    var url = Uri.parse(number);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      throw 'Could not launch $url';
+    }
   }
+
+
+  return Column(
+    children: [
+      ExpansionTile(
+        leading: (contactsList[index].photo == null)
+                  ? const CircleAvatar(child: Icon(Icons.person))
+                  : CircleAvatar(backgroundImage: MemoryImage(contactsList[index].photo!)),
+
+        title: Text(contactsList[index].name.first + " " + contactsList[index].name.last),
+        
+        subtitle: (contactsList[index].phones.isEmpty)
+        ? const Text("")
+        : Text(contactsList[index].phones.first.number),
+
+        children: [
+          Row(children: [
+            Expanded(
+              child: IconButton(
+                // disabledColor: Colors.grey.shade100,
+
+                onPressed: () async{
+                      final link = WhatsAppUnilink(
+                        phoneNumber: contactsList[index].phones.first.number,
+                      ).toString();
+
+                      try{
+                          if(contactsList[index].phones.first.number.startsWith("+") == false){
+                            disable = true;
+                          }
+                        if(!disable){
+                          await launch(link);
+                        }
+                        else{
+                          ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                        }
+                      }catch(e){
+                        print("No number");
+                      }
+        
+                  },
+                icon: Icon(
+                  Icons.whatsapp_outlined,
+                  color: disable? Colors.grey
+                    :Colors.green,
+                  )),
+            ),
+            
+            Expanded(
+              child: IconButton(
+                onPressed: (){
+                  _makingPhoneCall("tel:"+contactsList[index].phones.first.number);
+                },
+                icon: const Icon(Icons.call))
+              )
+            
+          ],)
+        ],
+
+      ),
+      const Divider(height: 10,),
+    ]);
+
+}
